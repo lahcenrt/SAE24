@@ -1,0 +1,20 @@
+<?php
+
+$host = "localhost";
+$username = "gestRT";
+$password = "RT";
+$database = "bdd_iut";
+
+// Connexion à la base de données
+$conn = mysqli_connect($host, $username, $password, $database);
+
+// Vérification de la connexion
+if (mysqli_connect_error()) {
+    echo "Erreur de connexion à la base de données : " . mysqli_connect_error();
+    exit();
+} else {
+    echo "Connexion à la base de données réussie.";
+    header("Location: ../index_gestRT.php");
+    exit();
+}
+?>
