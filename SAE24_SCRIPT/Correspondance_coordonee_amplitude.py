@@ -45,21 +45,21 @@ def on_message(client, userdata, message):
 
 def correspondance_coo_amp(Amp):
 
-    cursor.execute("SELECT coordonees FROM Nabil WHERE Ampmicro1 = %s AND Ampmicro2 = %s AND Ampmicro3 = %s", (mAmp["Ampm1"], mAmp["Ampm2"], mAmp["Ampm3"]))
+    cursor.execute("SELECT Num_case FROM Ampli-mic WHERE Mic1BG = %s AND Mic2HG = %s AND Mic3HD = %s", (mAmp["Ampm1"], mAmp["Ampm2"], mAmp["Ampm3"]))
 
-    cooObj = cursor.fetchone()
+    cooObj = cursor.fetchfirst()
 
     return cooObj
 
 def envoi_coo(cooObj):
 
-    cursor.execute("INSERT INTO Abdel(coordonees) VALUES(%s) ",(cooObj,))
+    cursor.execute("INSERT INTO For-ws(Num_case, Mic1BG, Mic2HG, Mic3HD) VALUES(%s, %s, %s, %s) ",(cooObj, mAmp["Ampm1"], mAmp["Ampm2"], mAmp["Ampm3"]))
 
 
 # ==================== Connection au serveurs ==================== #
 
 # Base de Données #
-BDDSaE24 = mysql.connector.connect(user='admin', password='passroot',host='127.0.0.1',database='sae24.sql')
+BDDSaE24 = mysql.connector.connect(user='admin', password='passroot',host='127.0.0.1',database='sae24(2).sql')
 
 cursor = BDDSaE24.cursor()
 
