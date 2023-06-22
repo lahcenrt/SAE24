@@ -1,26 +1,50 @@
+''' 
+
+======== Connexion au serveurs : =========
+
+Base de données :
+
+'''
+
+UsrBDD = 'adminsae24'   # Nom utilisateur pour la Base de Données
+pswBDD = 'passroot'   # Mot de passe de l'utilisateur
+AddrBDD = '192.168.195.134'   # Adresse de la Base de Données
+nomBDD = 'sae24'   # Nom de la Base de Données
 
 
-def JSON(msg, obj):
-    
-    msg = msg.payload.decode()
-    msg = msg[obj]
-    
-    return msg 
+'''
+Broker MQTT :
+
+'''
+AddrMqtt = '192.168.195.236'   # Adresse du broker MQTT
+prtMqtt = 1883   # Port du Broker MQTT
+tpcMqtt = 'topic_micro'   # Topic sur lequel s'abonner
+'''
+
+========================================================================================================================================================================
+
+'''
+
+import paho.mqtt.client as mqtt
+
+
+import mysql.connector as mysql
+from mysql.connector import Error
+
+
+cooObj = None
 
 def connexion_test_mqtt():
 
-    import paho.mqtt.client as mqtt
-
-
     def on_connect(client, userdata, flags, rc):
 
-        client.subscribe("Student/by-room")
+        client.subscribe(tpcMqtt)
 
     BrokerSaE24 = mqtt.Client()
 
     def on_message(client, userdata, message):
 
-        message_content = str(message.payload.decode("utf-8")) 
+        print("test :", message)
         print("message reçu: "  + str(message.payload.decode("utf-8")))
         print("message topic: "+ message.topic)
 
@@ -31,51 +55,60 @@ def connexion_test_mqtt():
     BrokerSaE24.on_message = on_message
 
 
-    BrokerSaE24.connect("mqtt://mqtt.iut-blagnac.fr", 1883, 60)
+    BrokerSaE24.connect(AddrMqtt, 1883, 60)
 
 
     BrokerSaE24.loop_forever()
 
 
 
-
 def connexion_test_sql():
 
-    import mysql.connector as mysql
 
-    def correspondance_coo_amp(Amp):
 
-        cursor.execute("SELECT Num_case FROM Ampli-mic WHERE Mic1BG = %s AND Mic2HG = %s AND Mic3HD = %s", (mAmp["Ampm1"], mAmp["Ampm2"], mAmp["Ampm3"]))
+    def TestBDDReception():
 
-        cooObj = cursor.fetchone()
+        search_query = "SELECT Num_case FROM Ampli-mic"
+        cursor.execute(search_query)
+
+        cooObj = cursor.fetchall()
+        print(cooObj[-1])
 
         return cooObj
 
 
+    def TestBDDEnvoi():
 
-    mAmp = {}
+        BDDSaE24.commit()
 
-    mAmp["Ampm1"] = '0.0449'
-    mAmp["Ampm2"] = '0.0243'
-    mAmp["Ampm3"] = '0.0268'
+        insert_query = "INSERT INTO table1 (ID, NumeroCase) VALUES (%s, %s)"
+        cursor.execute(insert_query, (8, 18))
 
-
-
+        BDDSaE24.commit()
 
 
-    BDDSaE24 = mysql.connect(user='4208885_testbdd', password='testBDD123',host='fdb1027.eohost.com',database='4208885_testbdd')
+    print(pswBDD)
+
+    BDDSaE24 = mysql.connect(user=UsrBDD, password=pswBDD,host=AddrBDD,database=nomBDD)
 
     cursor = BDDSaE24.cursor()
 
 
-
-
-    correspondance_coo_amp(mAmp)
-
-
+    #TestBDDEnvoi()
+    TestBDDReception()
 
 
     cursor.close()
     BDDSaE24.close()
 
-connexion_test_sql()
+
+try :
+
+    connexion_test_sql()
+except Error as erreur :
+    print("\n marche pas :\n\n", erreur)
+
+
+
+#connexion_test_mqtt()
+
