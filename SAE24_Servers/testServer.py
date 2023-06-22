@@ -101,14 +101,14 @@ def connexion_test_sql():
     cursor.close()
     BDDSaE24.close()
 
-
+'''
 try :
 
     connexion_test_sql()
 except Error as erreur :
     print("\n marche pas :\n\n", erreur)
+'''
 
 
-
-#connexion_test_mqtt()
+connexion_test_mqtt()
 
