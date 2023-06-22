@@ -14,7 +14,9 @@ try:
         cursor.execute("SELECT DATABASE();")
         record = cursor.fetchone()
         print("You're connected to database: ", record)
-        cursor.execute("SELECT login FROM Admin;")
+        QueryTest = "SELECT `{}` FROM `{}`;".format('login','Admin')
+        cursor.execute(QueryTest)
+
         TestData = cursor.fetchone()
         print("Case :", TestData)
 except Error as e:

@@ -1,24 +1,16 @@
 import paho.mqtt.client as mqtt
 
 def on_connect(client, userdata, flags, rc):
-    if rc == 0:
-        print("Connexion réussie")
-    else:
-        print(f"Problème de connexion, code = {rc}")
+    print(f"Connected with result code {rc}")
+    client.subscribe("topic_micro/#")
 
-def on_message(client, userdata, message):
-    print(f"message reçu: {str(message.payload.decode('utf-8'))}")
+def on_message(client, userdata, msg):
+    print(f"{msg.topic} {msg.payload}")
 
-client = mqtt.Client("P1") 
-
+client = mqtt.Client()
 client.on_connect = on_connect
 client.on_message = on_message
 
-try:
-    client.connect("192.168.195.236") 
-    client.loop_start() 
-    client.subscribe("topic_micro")
-except Exception as e:
-    print(f"Une erreur s'est produite : {e}")
-finally:
-    client.loop_stop()
+client.connect("192.168.159.33", 1883, 60)
+
+client.loop_forever()

@@ -12,23 +12,23 @@ la position de l'objet ayant émis le bruit capté par les 3 microphones. (pour 
 
 ======== Connexion au serveurs : =========
 
-Base de données :
+Database :
 
 '''
 
-UsrBDD = ''   # Nom utilisateur pour la Base de Données
-pswBDD = ''   # Mot de passe de l'utilisateur
-AddrBDD = ''   # Adresse de la Base de Données
-nomBDD = ''   # Nom de la Base de Données
+UsrBDD = 'adminsae24'   # Username
+pswBDD = 'passroot'   # Password
+AddrBDD = '127.0.0.1'   # Host address
+nomBDD = 'sae24'   # Database name
 
 
 '''
 Broker MQTT :
 
 '''
-AddrMqtt = ""   # Adresse du broker MQTT
-prtMqtt = ""   # Port du Broker MQTT
-tpcMqtt = ""   # Topic sur lequel s'abonner
+AddrMqtt = "192.168.159.33"   # Host address
+prtMqtt = 1883   # Port 
+tpcMqtt = 'topic_micro/#'   # Topic 
 '''
 
 ========================================================================================================================================================================
@@ -41,75 +41,113 @@ from mysql.connector import Error
 
 import paho.mqtt.client as mqtt
 
-from json import *
+import json
+import subprocess
 
-# ==================== Déclaration des Variables ==================== #
+
+# ==================== Variables Declaration ==================== #
 
 envoiFINI = False
 
-# ==================== Déclaration des Fonctions ==================== #
+# ==================== Fonctions Declaration ==================== #
 
-def JSON(msg, obj):
+## convertion from JSON to python variable ##
+
+def convJSON(msg, obj):
+
+    msg = str(msg.payload.decode("utf-8"))
+    msgDICO = json.loads(msg)
     
-    msg = msg.payload.decode()
-    msg = msg[obj]
-    
-    return msg 
+    return msgDICO[obj]
 
-## Envoi de la position actuelle de l'objet dans la BDD ##
+## Sending the object current location to the database ##
 
-def envoi_coo(cooObj,Amp):
+def envoi_coo(cooObj):
 
-    cursor.execute("INSERT INTO For-ws(Num_case, cdMic1BG, cdMic2HG, cdMic3HD) VALUES(%s, %s, %s, %s) ",(cooObj, Amp["Ampm1"], Amp["Ampm2"], Amp["Ampm3"]))
+    print('Envoi en cours : ',cooObj)
+
+    # Calling the shell script QueryEnvoi.sh
+    subprocess.call(['./QueryEnvoi.sh', str(cooObj)])
+
     envoiFINI = True
 
-## Correspondance amplitudes / position de l'objet , à l'aide de la BDD ##
+## Using the database to match the microphones datas with the object location ##
 
 def correspondance_coo_amp(Amp):
 
     cooObj = None
 
-    cursor.execute("SELECT Num_case FROM Ampli-mic WHERE Mic1BG = %s AND Mic2HG = %s AND Mic3HD = %s", (Amp["Ampm1"], Amp["Ampm2"], Amp["Ampm3"]))
+    QueryComp = "SELECT Num_case FROM Ampli_mic WHERE cdMic1BG = '{}' AND cdMic2HG = '{}' AND cdMic3HD = '{}'".format(Amp["Ampm1"], Amp["Ampm2"], Amp["Ampm3"])
 
-    cooObj = cursor.fetchfirst()
+    cursor.execute(QueryComp)
 
-    return cooObj
+    cooObj = cursor.fetchone()
 
-## A la reception d'un message MQTT ##
+    print('Position actuelle de l objet :', cooObj[0] )
+
+    return cooObj[0]
+
+## When recieving a MQTT message : ##
 
 def on_message(client, userdata, message):
-
+    print('\nreçu!')
     mAmp = {}
 
-    print("message reçu: "  + str(message.payload.decode("utf-8")))
     print("topic du message : "+ message.topic)
 
-    if message.topic == "topic_micro/mic1" :
-        mAmp["Ampm1"] = JSON(message, "mic1")
-        print("Ajouter à Micro1: "+ message.payload.decode())
-    elif message.topic == "topic_micro/mic2" :
-        mAmp["Ampm1"] = JSON(message, "mic2")
-        print("Ajouter à Micro2: "+ message.payload.decode())
-    elif message.topic == "topic_micro/mic3" :
-        mAmp["Ampm1"] = JSON(message, "mic3")
-        print("Ajouter à Micro3: "+ message.payload.decode())
+    if message.topic == "topic_micro/microphones" :
+        mAmp["Ampm1"] = convJSON(message, "mic1")
+        mAmp["Ampm2"] = convJSON(message, "mic2")
+        mAmp["Ampm3"] = convJSON(message, "mic3")
 
-    if mAmp["Ampm1"] == True and mAmp["Ampm2"] == True and mAmp["Ampm3"] == True :      #Si les 3 Amplitutes sont reçu :
+        print("\nAjouter à Micro 1: ", mAmp["Ampm1"])
+        print("Ajouter à Micro 2: ", mAmp["Ampm2"])
+        print("Ajouter à Micro 3: ", mAmp["Ampm3"])
 
-        envoi_coo(correspondance_coo_amp(mAmp), mAmp)                                   #Envoyé les données
+    if mAmp["Ampm1"] == True and mAmp["Ampm2"] == True and mAmp["Ampm3"] == True :      # If all 3 amplitutes are received :
 
-    if envoiFINI == True :
-        print('Envoi effectué')
-        envoiFINI = False
-    
+        print('\n Triangulation :\n')
+        envoi_coo(correspondance_coo_amp(mAmp))                                   # Sending data
+     
 
-# ==================== Connection au serveurs ==================== #
+
+
+
+## MQTT Simulation ##
+
+def test(message):
+    print('\nreçu!')
+    mAmp = {}
+
+    print("message reçu: ",message)
+    print("topic du message : oui")
+
+    if message:
+        mAmp["Ampm1"] = message["mic1"] 
+        mAmp["Ampm2"] = message["mic2"] 
+        mAmp["Ampm3"] = message["mic3"] 
+
+        print("\nAjouter à Micro 1: ", mAmp["Ampm1"])
+        print("Ajouter à Micro 2: ", mAmp["Ampm2"])
+        print("Ajouter à Micro 3: ", mAmp["Ampm3"])
+
+    if mAmp["Ampm1"] and mAmp["Ampm2"] and mAmp["Ampm3"]:                         # If all 3 amplitutes are received :
+
+        print('\n c est partis mon kiki\n')
+        envoi_coo(correspondance_coo_amp(mAmp))                                   # Sending data
+
+
+
+
+# ==================== Connection to the servers ==================== #
 
 # Broker MQTT #
 
 def on_connect(client, userdata, flags, rc):
 
     client.subscribe(tpcMqtt)
+    print("\nMQTT Server connecté ")
+
 
 def connexionMQTT():
 
@@ -122,23 +160,40 @@ def connexionMQTT():
 
     BrokerSaE24.loop_forever()
 
-# Base de Données #
+# Base de Données #       
 
 def connexionBDD():
 
-    BDDSaE24 = mysql.connector.connect(user=UsrBDD, password=pswBDD,host=AddrBDD,database=nomBDD)
+    BDDSaE24 = mysql.connect(user=UsrBDD, password=pswBDD,host=AddrBDD,database=nomBDD)
 
-    cursor = BDDSaE24.cursor()
-
-    return cursor
+    return BDDSaE24
 
 # ==================== Execution ==================== #
 
 try:
-    cursor = connexionBDD()
-except Error as erreur:
-    print("\n # Connexion à la Base de données impossible, vérifier les informations de connexion en tête de fichier #\n\n", erreur)
+    BDDSaE24 = connexionBDD()
+    cursor = BDDSaE24.cursor()
 
-connexionMQTT()
+    if BDDSaE24.is_connected():
+            
+            db_Info = BDDSaE24.get_server_info()
+            print("MySQL Server connecté : ", db_Info)
+            
+            cursor.execute("SELECT DATABASE();")
+            record = cursor.fetchone()
+            print("Connecté a la base: ", record)
 
-cursor.close()
+            connexionMQTT()
+            #test({"mic1": "100110","mic2": "101101","mic3": "111","last_position": 130})
+
+except Error as e:
+        print("\n # Erreur sur la Base de données, vérifier les informations de connexion en tête de fichier #\n\n", e)
+
+finally:
+        if (BDDSaE24.is_connected()):
+            cursor.close()
+            BDDSaE24.close()
+            print("\n # MySQL Server Déconnecté #\n")
+
+
+#TODO QueryEnvoi(fonctionne) + affiché de M1 a M3
